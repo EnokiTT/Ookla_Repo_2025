@@ -67,6 +67,18 @@ if errorlevel 1 (
 )
 
 echo.
+echo [STEP] Installing additional packages for Ookla data download...
+pip install pyarrow fsspec s3fs
+
+if errorlevel 1 (
+    echo.
+    echo [WARNING] Failed to install some additional packages
+    echo You may need to install manually: pip install pyarrow fsspec s3fs
+) else (
+    echo [OK] Additional packages installed successfully!
+)
+
+echo.
 echo [OK] All packages installed successfully!
 echo.
 echo ================================

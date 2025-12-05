@@ -47,16 +47,45 @@ REGION_PRESETS = {
         'name': 'Java Region',
         'country': 'Indonesia',
         'provinces': [
-            'Banten', 'DKI Jakarta', 'Jawa Barat', 'Jawa Tengah',
-            'DI Yogyakarta', 'Jawa Timur'
+            'Banten', 'Jakarta Raya', 'Jawa Barat', 'Jawa Tengah',
+            'Yogyakarta', 'Jawa Timur'
         ]
     },
-    'philippines_luzon': {
-        'name': 'Luzon Region',
-        'country': 'Philippines',
+    'indonesia_kalimantan': {
+        'name': 'Kalimantan Region',
+        'country': 'Indonesia',
         'provinces': [
-            'Cagayan', 'Isabela', 'Aurora', 'Quezon',
-            'Camarines Norte', 'Camarines Sur', 'Albay'
+            'Kalimantan Barat', 'Kalimantan Tengah', 'Kalimantan Selatan', 'Kalimantan Timur',
+            'Kalimantan Utara'
+        ]
+    },
+    'indonesia_sulawesi': {
+        'name': 'Sulawesi Region',
+        'country': 'Indonesia',
+        'provinces': [
+            'Sulawesi Utara', 'Gorontalo', 'Sulawesi Tengah', 'Sulawesi Selatan',
+            'Sulawesi Tenggara', 'Sulawesi Barat'
+        ]
+    },
+    'indonesia_bali_nusa_tenggara': {
+        'name': 'Bali and Nusa Tenggara Region',
+        'country': 'Indonesia',
+        'provinces': [
+            'Bali', 'Nusa Tenggara Barat', 'Nusa Tenggara Timur'
+        ]
+    },
+    'indonesia_maluku': {
+        'name': 'Maluku Region',
+        'country': 'Indonesia',
+        'provinces': [
+            'Maluku', 'Maluku Utara'
+        ]
+    },
+    'indonesia_papua': {
+        'name': 'Papua Region',
+        'country': 'Indonesia',
+        'provinces': [
+            'Papua', 'Papua Barat' ,
         ]
     },
     # Add more regions as needed

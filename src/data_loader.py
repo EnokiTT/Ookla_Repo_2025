@@ -316,12 +316,20 @@ class NaturalEarthLoader:
         
         if found_count < expected_count:
             missing = set(province_names) - set(selected['name'].values)
+            all_provinces = sorted(self.current_provinces['name'].unique())
             print(f"⚠️  Missing provinces: {missing}")
-            print(f"   Available provinces in {self.current_country}:")
-            for name in sorted(self.current_provinces['name'].unique())[:10]:
-                print(f"     - {name}")
-            if len(self.current_provinces) > 10:
-                print(f"   ... and {len(self.current_provinces) - 10} more")
+            print(f"   Available provinces in {self.current_country} (Total: {len(all_provinces)}):")
+            
+            # Display all provinces in 3 columns
+            cols = 3
+            rows = (len(all_provinces) + cols - 1) // cols
+            for i in range(rows):
+                line = ""
+                for j in range(cols):
+                    idx = i + j * rows
+                    if idx < len(all_provinces):
+                        line += f"     {all_provinces[idx]:<30}"
+                print(line.rstrip())
         
         return selected
 

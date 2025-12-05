@@ -57,6 +57,17 @@ pip install -r requirements.txt
 
 if [ $? -eq 0 ]; then
     echo ""
+    echo "📥 Installing additional packages for Ookla data download..."
+    pip install pyarrow fsspec s3fs
+    
+    if [ $? -eq 0 ]; then
+        echo "✅ Additional packages installed successfully!"
+    else
+        echo "⚠️  Warning: Failed to install some additional packages"
+        echo "   You may need to install manually: pip install pyarrow fsspec s3fs"
+    fi
+    
+    echo ""
     echo "✅ All packages installed successfully!"
     echo ""
     echo "================================"

@@ -5,6 +5,7 @@ Aggregates data and exports to optimized Excel format
 
 import pandas as pd
 import geopandas as gpd
+import numpy as np
 from pathlib import Path
 import logging
 from datetime import datetime
@@ -172,6 +173,49 @@ class TableauDataPreparer:
         
         return output_files
     
+    def _decode_quadkey_to_latlon(self, quadkey):
+        """
+        Decode Bing Maps quadkey to latitude/longitude (center of tile)
+        
+        Uses the official Bing Maps Tile System algorithm:
+        https://docs.microsoft.com/en-us/bingmaps/articles/bing-maps-tile-system
+        
+        Parameters:
+            quadkey (str): Quadkey string (e.g., "3101020323112312")
+            
+        Returns:
+            tuple: (latitude, longitude)
+        """
+        tile_x = tile_y = 0
+        level_of_detail = len(str(quadkey))
+        
+        # Decode quadkey to tile X,Y coordinates
+        for i in range(level_of_detail):
+            mask = 1 << (level_of_detail - 1 - i)
+            digit = int(str(quadkey)[i])
+            
+            if digit == 1:
+                tile_x |= mask
+            elif digit == 2:
+                tile_y |= mask
+            elif digit == 3:
+                tile_x |= mask
+                tile_y |= mask
+        
+        # Convert tile coordinates to pixel coordinates (center of tile)
+        map_size = 256 << level_of_detail
+        pixel_x = (tile_x * 256) + 128
+        pixel_y = (tile_y * 256) + 128
+        
+        # Convert pixel coordinates to lat/lon
+        x = (pixel_x / map_size) - 0.5
+        y = 0.5 - (pixel_y / map_size)
+        
+        longitude = 360 * x
+        latitude = 90 - 360 * np.arctan(np.exp(-y * 2 * np.pi)) / np.pi
+        
+        return latitude, longitude
+    
     def _aggregate_data(self, df):
         """
         Aggregate data by bin (quadkey) and time period
@@ -183,6 +227,15 @@ class TableauDataPreparer:
             DataFrame: Aggregated data
         """
         print(f"\n📦 Aggregating data to bins...")
+        
+        # Decode quadkeys to lat/lon if not already present
+        if 'latitude' not in df.columns or 'longitude' not in df.columns:
+            print(f"   🗺️  Decoding quadkeys to lat/lon coordinates...")
+            import numpy as np
+            latlon_data = df['quadkey'].apply(self._decode_quadkey_to_latlon)
+            df['latitude'] = [x[0] for x in latlon_data]
+            df['longitude'] = [x[1] for x in latlon_data]
+            print(f"   ✅ Added lat/lon columns for Tableau mapping")
         
         # Define aggregation rules
         agg_dict = {
@@ -368,7 +421,7 @@ class TableauDataPreparer:
         # Merge with all data
         comparison = df.merge(baseline_metrics, on='quadkey', how='left')
         
-        # Calculate percent changes
+        # Calculate percent changes from baseline (Q1)
         comparison['d_kbps_pct_change'] = (
             (comparison['avg_d_kbps_mean'] - comparison['baseline_d_kbps']) 
             / comparison['baseline_d_kbps'] * 100
@@ -377,6 +430,43 @@ class TableauDataPreparer:
             (comparison['avg_u_kbps_mean'] - comparison['baseline_u_kbps']) 
             / comparison['baseline_u_kbps'] * 100
         )
+        
+        # Calculate consecutive quarter changes (Q1→Q2→Q3→Q4→next year Q1)
+        # Sort by quadkey, then year, then quarter to ensure proper chronological order
+        comparison = comparison.sort_values(['quadkey', 'year', 'quarter'])
+        
+        # Create a time_period column for easier sequential tracking (e.g., 2019.1, 2019.2, 2020.1)
+        comparison['time_period'] = comparison['year'] + (comparison['quarter'] - 1) * 0.25
+        
+        # Get previous quarter's values for each quadkey (works across years)
+        comparison['prev_d_kbps'] = comparison.groupby('quadkey')['avg_d_kbps_mean'].shift(1)
+        comparison['prev_u_kbps'] = comparison.groupby('quadkey')['avg_u_kbps_mean'].shift(1)
+        comparison['prev_year'] = comparison.groupby('quadkey')['year'].shift(1)
+        comparison['prev_quarter'] = comparison.groupby('quadkey')['quarter'].shift(1)
+        
+        # Calculate quarter-over-quarter percent change
+        comparison['d_kbps_qoq_change'] = (
+            (comparison['avg_d_kbps_mean'] - comparison['prev_d_kbps']) 
+            / comparison['prev_d_kbps'] * 100
+        )
+        comparison['u_kbps_qoq_change'] = (
+            (comparison['avg_u_kbps_mean'] - comparison['prev_u_kbps']) 
+            / comparison['prev_u_kbps'] * 100
+        )
+        
+        # Add a flag to identify year transitions (2019 Q4 → 2020 Q1)
+        comparison['is_year_transition'] = (
+            (comparison['quarter'] == 1) & 
+            (comparison['prev_quarter'] == 4) & 
+            (comparison['year'] != comparison['prev_year'])
+        )
+        
+        # Clean up temporary columns
+        comparison = comparison.drop(columns=['prev_d_kbps', 'prev_u_kbps', 'prev_year', 'prev_quarter'])
+        
+        # Add cumulative change from baseline
+        comparison['d_kbps_cumulative_change'] = comparison['d_kbps_pct_change']
+        comparison['u_kbps_cumulative_change'] = comparison['u_kbps_pct_change']
         
         # Save to Excel
         self._create_excel_file(comparison, output_path, "Comparison")
